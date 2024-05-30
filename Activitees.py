@@ -48,11 +48,12 @@ with st.sidebar:
     if "Toutes activités" not in selected_activites:
         df_filtered = df_filtered[df_filtered["Activité"].isin(selected_activites)]
 
-# Affichage de la carte dans Streamlit
-col_carte = st.columns([0.2, 0.6, 0.2])
-with col_carte[1]:
-    st.header("Carte Loire-Atlantique")
+st.header("Carte des activités en Loire-Atlantique")
+st.text("N'oubliez pas de sélectionner votre activité en bas pour trouver les hébergements")
 
+# Affichage de la carte dans Streamlit
+col_carte = st.columns([0.8 , 0.2])
+with col_carte[0]:
     if selected_commune == "Toutes les communes":
         fig = px.scatter_mapbox(
             df_filtered,
@@ -106,7 +107,7 @@ with st.expander("Nom de l'établissement :"):
         df_reco = df_reco[df_reco["Nom de l'établissement"] == selected_etab]
 
 if selected_etab == "Pas de sélection":
-    st.write("Choisissez un établissement")
+    st.write("Choisissez un  pour la recommandation")
 else:
     st.write(f"""Vous avez choisi {df_reco.iloc[0]["Nom de l'établissement"]}\n
     L'adresse est le {df_reco.iloc[0]["Adresse de l'établissement"]}\n
