@@ -5,7 +5,7 @@ import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 
-# memoire cache
+# memoire session_state
 if 'df_h' not in st.session_state:
     chemin = Path.cwd()
     fichier_data = chemin / "data" / "Base_Hebergement_V2.csv"
@@ -24,9 +24,8 @@ if 'selected_etab' in st.session_state:
 else:
     st.write("Aucune sélection d'établissement trouvée.")
 
-X = df_h[['Latitude', 'Longitude']]
-
 # Ajuster le modèle KNN
+X = df_h[['Latitude', 'Longitude']]
 knn = NearestNeighbors(n_neighbors=3)
 knn.fit(X)
 
