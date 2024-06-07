@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import plotly.express as px
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import NearestNeighbors
 
 # memoire session_state
 if "df_full" not in st.session_state:
@@ -16,7 +18,8 @@ else:
 # drop des nulls
 df_full = df_full.dropna(subset=["Latitude", "Longitude"])
 df_full = df_full.drop(columns=["Unnamed: 0"])
-df = df_full.drop(df_full[df_full["Type"] == "Hébergement"].index)
+df_acti = df_full.drop(df_full[df_full["Type"] == "Hébergement"].index)
+df_heb = df_full.drop(df_full[df_full["Type"] == "Activité"].index)
 
 # Configuration initiale
 st.set_page_config(
@@ -27,17 +30,17 @@ with st.sidebar:
     st.write("Faite votre séléction :")
     # Sélection de la commune
     with st.expander("Commune :"):
-        commune_list = df["Commune"].unique().tolist()
+        commune_list = df_acti["Commune"].unique().tolist()
         commune_list.insert(0, "Toutes les communes")
         selected_commune = st.radio("Commune :", commune_list)
     # Sélection du type d'activitées
     with st.expander("Type d'activité :"):
-        type_acti_list = df["Type d’Activité"].unique().tolist()
+        type_acti_list = df_acti["Type d’Activité"].unique().tolist()
         type_acti_list.insert(0, "Tous types d'activités")
         selected_type_acti = st.radio("Type d’Activité :", type_acti_list)
     # Création du DF en fonction des choix précédents
     with st.expander("Tableau de données"):
-        df_filtered_raw = df.copy()
+        df_filtered_raw = df_acti.copy()
         if selected_commune != "Toutes les communes":
             df_filtered_raw = df_filtered_raw[
                 df_filtered_raw["Commune"] == selected_commune
@@ -74,7 +77,31 @@ with st.expander("Nom de l'établissement :"):
     if selected_etab != "Pas de sélection":
         df_reco = df_reco[df_reco["Nom de l'établissement"] == selected_etab]
 
+
+
+X = df_heb[['Latitude', 'Longitude']]
+knn = NearestNeighbors(n_neighbors=3)
+knn.fit(X)
+nearest_neighbors_df = df_reco
+if selected_etab != "Pas de sélection":
+    reco_coords = df_reco[['Latitude', 'Longitude']]
+    distances, indices = knn.kneighbors(reco_coords)
+    # Créer une liste pour stocker les DataFrames des voisins
+    nearest_neighbors_dfs = []
+
+    # Parcourir chaque ensemble de voisins et créer un DataFrame
+    for i, idx_list in enumerate(indices):
+        neighbors_df = df_full.iloc[idx_list].copy()
+        neighbors_df['original_index'] = i  # Ajouter l'indice d'origine
+        nearest_neighbors_dfs.append(neighbors_df)
+
+    # Concaténer tous les DataFrames en un seul
+    nearest_neighbors_df = pd.concat(nearest_neighbors_dfs, ignore_index=True)
+
+nearest_neighbors_df
+
 # Carte dans Streamlit
+
 # disposition de la carte sur la page
 col_carte = st.columns([0.8, 0.2])
 with col_carte[0]:
@@ -97,13 +124,13 @@ with col_carte[0]:
         )
     elif selected_etab != "Pas de sélection":
         fig = px.scatter_mapbox(
-            df_reco,
+            nearest_neighbors_df,
             lat="Latitude",
             lon="Longitude",
             color="Activité",
             hover_name="Nom de l'établissement",
             hover_data={
-                "Adresse mail": True,
+                "email": True,
                 "N° de téléphone": True,
                 "Site Web": True,
                 "Latitude": False,
@@ -142,7 +169,7 @@ with col_carte[0]:
 columns_to_show = [
     "Nom de l'établissement",
     "Adresse de l'établissement",
-    "Adresse mail",
+    "email",
     "N° de téléphone",
     "Site Web",
 ]
@@ -155,7 +182,7 @@ else:
     st.write(
         f"""Vous avez choisi {df_reco.iloc[0]["Nom de l'établissement"]}\n
     L'adresse est le {df_reco.iloc[0]["Adresse de l'établissement"]}\n
-    L'adresse mail est le {df_reco.iloc[0]["Adresse mail"]}\n
+    L'adresse mail est le {df_reco.iloc[0]["email"]}\n
     Joignable au {df_reco.iloc[0]["N° de téléphone"]}\n
     Site internet {df_reco.iloc[0]["Site Web"]}\n
     {df_reco.iloc[0]["information 1"]}\n
@@ -166,7 +193,3 @@ else:
     Rendez-vous sur la page hébergement pour voir les hébergements les plus proches.
     """
     )
-
-# Sauvgarde de la sélection
-st.session_state.df_reco = df_reco
-st.session_state["selected_etab"] = selected_etab
